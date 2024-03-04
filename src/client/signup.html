@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <!-- Meta tags and title go here -->
+</head>
+
+<body>
+    <!-- Sign-up form -->
+    <form id="signupForm">
+        <div class="row">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" required>
+        </div>
+
+        <div class="row">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" required>
+        </div>
+
+        <div class="row">
+            <label for="firstName">First Name</label>
+            <input type="text" id="firstName" name="firstName" required>
+        </div>
+
+        <div class="row">
+            <label for="lastName">Last Name</label>
+            <input type="text" id="lastName" name="lastName" required>
+        </div>
+
+        <div class="row">
+            <label for="username">Username</label>
+            <input type="text" id="username" name="username" required>
+        </div>
+
+        <div class="row">
+            <button type="button" onclick="signUp()">Sign Up</button>
+        </div>
+    </form>
+
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <script>
+        // Check for authToken cookie on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            const authToken = getCookie('authToken');
+            if (authToken) {
+                // Redirect to /home if authToken exists
+                window.location.href = '/home';
+            }
+        });
+
+        function signUp() {
+            // Get form data
+            const formData = {
+                email: document.getElementById('email').value,
+                password: document.getElementById('password').value,
+                first_name: document.getElementById('firstName').value,
+                last_name: document.getElementById('lastName').value,
+                username: document.getElementById('username').value
+            };
+
+            console.log(formData);
+            // Send form data to the server for sign-up processing
+            fetch('http://localhost:3000/user/sign-up', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw { status: response.status, message: response.statusText };
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Redirect to the root path upon successful sign-up
+                    window.location.href = '/';
+                })
+                .catch(error => {
+                    // Show an alert with the response message for any error (status other than 200)
+                    alert(`Error: ${error.status} - ${error.message}`);
+                    console.error('Error signing up:', error);
+                });
+        }
+
+        // Your existing JavaScript code goes here
+
+        // Function to get cookie value by name
+        function getCookie(name) {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.startsWith(name + '=')) {
+                    return cookie.substring(name.length + 1);
+                }
+            }
+            return null;
+        }
+    </script>
+</body>
+
+</html>

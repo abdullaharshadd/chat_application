@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Chat</title>
+</head>
+
+<body>
+
+    <!-- Display all users here -->
+    <div id="userList"></div>
+
+    <!-- Display all chats here -->
+    <div id="chatList"></div>
+
+    <!-- Display messages -->
+    <ul id="messages"></ul>
+
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <script>
+        function getCookie(name) {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.startsWith(name + '=')) {
+                    return cookie.substring(name.length + 1);
+                }
+            }
+            return null;
+        }
+
+        const socket = io('http://localhost:3000');
+
+        // Listen for messages from the server
+        socket.on('message', (message) => {
+            appendMessage(`from: ${message.from} | to: ${message.to} | message: ${message.message}`, message.from, message.chatId);
+        });
+
+        // Display all users and chats when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            getAllUsers();
+            getAllChats();
+        });
+
+        // Function to send messages to the server
+        function sendMessage() {
+            const inputElement = document.getElementById('messageInput');
+            const userId = document.getElementById('sendTo').value;
+
+            const info = {
+                message: inputElement.value,
+                token: getCookie('authToken'),
+                send_to: userId
+            };
+            socket.emit('message', info);
+
+            // Append the sent message to the sender's page
+            inputElement.value = '';
+        }
+
+        // Function to append messages to the messages list
+        function appendMessage(messageText, senderId, chatId) {
+            const messagesList = document.getElementById('messages');
+            const messageItem = document.createElement('li');
+            messageItem.textContent = messageText;
+            messagesList.appendChild(messageItem);
+
+            // Update last message for the corresponding chat
+            updateLastChat(chatId, messageText);
+        }
+
+        // Function to update the last message for a chat container
+        function updateLastChat(chatId, lastMessage) {
+            const chatContainer = document.getElementById(`chat_${chatId}`);
+            if (chatContainer) {
+                const lastMessageItem = chatContainer.querySelector('span:last-child');
+                if (lastMessageItem) {
+                    lastMessageItem.textContent = lastMessage;
+                }
+            }
+        }
+
+        // Function to get all users from the server
+        function getAllUsers() {
+            const token = getCookie('authToken');
+
+            fetch('http://localhost:3000/user/all', {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(users => displayUsers(users))
+                .catch(error => console.error('Error fetching users:', error));
+        }
+
+        // Function to display users in the userList div
+        function displayUsers(users) {
+            const userListDiv = document.getElementById('userList');
+            userListDiv.innerHTML = '<br><strong>All Users:</strong>';
+
+            users.forEach(user => {
+                const userContainer = document.createElement('div');
+                const userItem = document.createElement('span');
+                const messageInput = document.createElement('input');
+                const sendMessageButton = document.createElement('button');
+
+                userItem.textContent = user.username;
+                messageInput.placeholder = 'Type your message...';
+                sendMessageButton.textContent = 'Send Message';
+                sendMessageButton.onclick = () => sendMessageToUser(user.id, messageInput.value);
+
+                userContainer.appendChild(userItem);
+                userContainer.appendChild(messageInput);
+                userContainer.appendChild(sendMessageButton);
+                userListDiv.appendChild(userContainer);
+            });
+        }
+
+        // Function to send messages to a specific user
+        function sendMessageToUser(userId, message) {
+            const token = getCookie('authToken');
+
+            const info = {
+                message,
+                token,
+                send_to: userId
+            };
+            socket.emit('message', info);
+        }
+
+        // Function to get all chats from the server
+        function getAllChats() {
+            const token = getCookie('authToken');
+
+            fetch('http://localhost:3000/chat/chats', {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(chats => displayChats(chats))
+                .catch(error => console.error('Error fetching chats:', error));
+        }
+
+        // Function to display chats in the chatList div
+        function displayChats(chats) {
+            const chatListDiv = document.getElementById('chatList');
+            chatListDiv.innerHTML = '<br><strong>All Chats:</strong>';
+
+            chats.chats.forEach(chat => {
+                const chatContainer = document.createElement('div');
+                chatContainer.id = `chat_${chat.chatId}`; // Use a unique identifier for the chat container
+                const userItem = document.createElement('span');
+                const lastMessageItem = document.createElement('span');
+
+                userItem.textContent = chat.username;
+                lastMessageItem.textContent = `Chat between: ${chat.Inviter.username} and ${chat.Invitee.username}  |  Last Message: ${chat.last_message}`;
+
+                chatContainer.appendChild(userItem);
+                chatContainer.appendChild(lastMessageItem);
+                chatListDiv.appendChild(chatContainer);
+            });
+        }
+    </script>
+    <button onclick="signOut()">Sign Out</button>
+
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <script>
+        function signOut() {
+            // Delete the authentication cookie
+            document.cookie = 'authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+
+            // Redirect the user to the root path
+            window.location.href = '/';
+        }
+
+        // Your existing JavaScript code goes here
+    </script>
+</body>
+
+</html>
